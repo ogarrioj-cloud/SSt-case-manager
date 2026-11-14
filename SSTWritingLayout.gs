@@ -1,0 +1,17 @@
+
+function sstRepairWritingControlsScroll(){
+ const ss=sstBook_(),s=ss.getSheetByName('Writing Controls'),g=ss.getSheetByName('General');if(!s)throw Error('Writing Controls missing');
+ const rows=s.getRange(1,1,Math.min(20,s.getLastRow()),10).getValues();let header=rows.findIndex(r=>r[0]==='Student'&&r[1]==='Writing area'&&r[2]==='Mode'&&r[7]==='Student ID')+1;if(header<6)throw Error('Controls header not recognized. No layout changed.');
+ const last=s.getLastRow(),count=last-header,before=s.getRange(header+1,1,count,10).getValues(),formulas=s.getRange(header+1,1,count,10).getFormulas(),general=JSON.stringify([g.getDataRange().getValues(),g.getDataRange().getFormulas()]),note=String(s.getRange('A2').getValue()||''),oldFrozen=s.getFrozenRows();
+ if(header>6&&s.getRange(6,1,header-6,s.getMaxColumns()).getValues().some(r=>r.some(v=>v!=='')))throw Error('Extra rows above the table contain data; no rows removed.');
+ if(s.getRange('B2:G2').getValues()[0].some(v=>v!==''))throw Error('Additional note-row values found. No text merged.');
+ const q=ss.getSheetByName('Q&A - Start Here');if(q){const existing=new Set(q.getDataRange().getDisplayValues().flat()),items=[];
+ if(!existing.has('Why could I not scroll down in Writing Controls?'))items.push(['Writing Controls — scrolling','Why could I not scroll down in Writing Controls?','The frozen instructions became taller than the visible screen, leaving no space for the students. The top section is now compact and the student header is restored to row 6. Keep long explanations in Q&A or cell notes. Avoid inserting extra rows above the controls table so imports and modes keep their expected layout.','Scrolling repaired']);
+ if(note&&!existing.has(note)&&!existing.has('My note about Manual and Rubric mode'))items.push(['Writing Controls — notes','My note about Manual and Rubric mode',note+'\n\nCurrent connection support: Spanish Narrative and English Opinion are connected. Informational is not connected yet. Manual edits are entered in General and protected per student and writing area.','Original wording preserved']);
+ if(items.length){const at=q.getLastRow()+1;q.getRange(at,1,items.length,4).setValues(items).setWrap(true).setVerticalAlignment('top');q.autoResizeRows(at,items.length);}}
+ const previousNote=s.getRange('A1').getNote();if(note&&!previousNote.includes(note))s.getRange('A1').setNote((previousNote?previousNote+'\n\n':'')+'Teacher note (preserved):\n'+note);
+ s.setFrozenRows(0);if(header>6)s.deleteRows(6,header-6);
+ s.getRange('A2:G2').merge().setWrap(true).setVerticalAlignment('top').setFontSize(10);s.setRowHeight(1,36);s.setRowHeight(2,54);s.setRowHeights(3,3,40);s.setRowHeight(6,42);if(count)s.setRowHeights(7,count,42);s.setFrozenRows(6);
+ SpreadsheetApp.flush();const after=s.getRange(7,1,count,10).getValues();if(JSON.stringify(before)!==JSON.stringify(after)||JSON.stringify(formulas)!==JSON.stringify(s.getRange(7,1,count,10).getFormulas()))throw Error('Controls preservation check failed');if(general!==JSON.stringify([g.getDataRange().getValues(),g.getDataRange().getFormulas()]))throw Error('General preservation check failed');if(s.getRange('A6').getValue()!=='Student')throw Error('Header alignment check failed');
+ ss.setActiveSheet(s);s.getRange('A7').activate();console.log('PASS: frozen header compacted from '+oldFrozen+' rows; table restored to row 6; '+count+' control rows preserved exactly, including all modes, student IDs and imported text. General values/formulas unchanged. Original teacher note preserved in row 2, title-cell note and Q&A.');
+}
